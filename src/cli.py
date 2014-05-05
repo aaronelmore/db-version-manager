@@ -25,7 +25,26 @@ kCmdList = [
 
 
 class DatahubTerminal(cmd2.Cmd):
-  def __init__(self):
+  def __init__(self, con):
+    try:
+      self.con = con
+      self.prompt = "datahub> "
+      cmd2.Cmd.__init__(self, completekey='tab')
+    except Exception, e:
+      self.print_line('error: %s' % (e.message))
+      sys.exit(1)
+  
+  @classmethod
+  def from_args(cls, username, pswd):
+    try:
+      con = Connection(user=username, password=pswd)
+      return cls(con)
+    except Exception, e:
+      print('error: %s' % (e.message))
+      sys.exit(1)
+      
+  @classmethod    
+  def from_cli(cls):
     usage = "--user <user-name> [--host <host-name>] [--port <port>]"
     parser = OptionParser()
     parser.set_usage(usage)
@@ -40,14 +59,13 @@ class DatahubTerminal(cmd2.Cmd):
 
     parser.destroy()
     password = getpass.getpass('password: ')
-    cmd2.Cmd.__init__(self, completekey='tab')
-
     try:
-      self.con = Connection(user=options.user, password=password)
-      self.prompt = "datahub> "
+      con = Connection(user=options.user, password=password)
+      return cls(con)
     except Exception, e:
-      self.print_line('error: %s' % (e.message))
-      sys.exit(1)
+      print('error: %s' % (e.message))
+      sys.exit(1)    
+
 
   def do_ls(self, line):
     try:
@@ -101,6 +119,29 @@ class DatahubTerminal(cmd2.Cmd):
     except Exception, e:
       self.print_line('error: %s' % (e.message))
 
+  def do_checkout(self, line):
+    try:
+      repo = line.strip()
+      self.con.set_current_repo(repo)
+      self.print_line("current repo: %s " % (repo))
+    except Exception, e:
+      self.print_line('error: unable to checkout repo %s. %s' % (repo, e))
+      
+  def do_fork(self, line):
+    try:
+      repos = line.strip().split()
+      if len(repos) == 1 and self.con.current_repo is not None:
+        self.con_create_fork(self.con.current_repo,repos[0])
+        self.print_line("create repo %s forked from %s" % (repos[0], self.con.current_repo))
+      if len(repos) == 2:
+        self.con_create_fork(repos[0],repos[1])
+        self.print_line("create repo %s forked from %s" % (repos[1], repos[0]))
+      else:
+        self.print_line("invalid repo fork command name. should be  fork [sourcefork] [newfork] or  souce [newfork]: '%s'" % (line))
+
+    except Exception, e:
+      self.print_line('error: %s' % (e.message))
+
   def do_exit(self, line):
     return True
 
@@ -132,7 +173,7 @@ class DatahubTerminal(cmd2.Cmd):
 
 
 def main():  
-  datahub_terminal = DatahubTerminal()
+  datahub_terminal = DatahubTerminal.from_cli()
   sys.argv = sys.argv[:1]
   datahub_terminal.cmdloop()
 

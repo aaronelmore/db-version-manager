@@ -13,7 +13,8 @@ DataHub DB wrapper for backends (only postgres implemented)
 class Connection:
   def __init__(self, user, password):
     self.backend = PGBackend(user, password)
-  
+    self.current_repo = None
+    
   def create_repo(self, repo):
     return self.backend.create_repo(repo=repo)
 
@@ -23,6 +24,18 @@ class Connection:
   def delete_repo(self, repo, force=False):
     return self.backend.delete_repo(repo=repo, force=force)
 
+  def create_fork(self, source_branch, new_branch):
+    raise NotImplementedError()
+
+  def set_current_repo(self, repo):
+    if not repo or len(repo) == 0:
+      raise NameError("No repo name")
+    repos = [z[0] for z in self.backend.list_repos()['tuples']]
+    if repo in repos:
+      self.current_repo = repo 
+    else:
+      raise NameError("Repo not a valid repo. Repos : %s" % repos)
+  
   def list_tables(self, repo):
     return self.backend.list_tables(repo=repo)
 
