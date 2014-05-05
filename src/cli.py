@@ -119,30 +119,45 @@ class DatahubTerminal(cmd2.Cmd):
     except Exception, e:
       self.print_line('error: %s' % (e.message))
 
-  def do_checkout(self, line):
+  def do_setrepo(self, line):
     try:
       repo = line.strip()
       self.con.set_current_repo(repo)
       self.print_line("current repo: %s " % (repo))
     except Exception, e:
       self.print_line('error: unable to checkout repo %s. %s' % (repo, e))
-      
+          
+  def do_checkout(self, line):
+    try:
+      branch = line.strip()
+      self.con.set_current_branch(branch)
+      self.print_line("current branch: %s " % (branch))
+    except Exception, e:
+      self.print_line('error: unable to set branch %s. %s' % (branch, e))
+  
+  def do_branch(self, line):
+    try:
+      self.print_line("current branch: %s " % (self.con.get_current_branch()))
+    except Exception, e:
+      self.print_line('error: unable to get current branch %s' % (e))
+  
   def do_fork(self, line):
     try:
       repos = line.strip().split()
-      if len(repos) == 1 and self.con.current_repo is not None:
-        self.con_create_fork(self.con.current_repo,repos[0])
+      if len(repos) == 1 and self.con.get_current_branch() is not None:
+        self.con.create_fork(self.con.get_current_branch(),repos[0])
         self.print_line("create repo %s forked from %s" % (repos[0], self.con.current_repo))
       if len(repos) == 2:
-        self.con_create_fork(repos[0],repos[1])
+        self.con.create_fork(repos[0],repos[1])
         self.print_line("create repo %s forked from %s" % (repos[1], repos[0]))
       else:
-        self.print_line("invalid repo fork command name. should be  fork [sourcefork] [newfork] or  souce [newfork]: '%s'" % (line))
+        self.print_line("invalid repo fork command. should be  fork [sourcefork] [newfork] or  souce [newfork]: '%s'" % (line))
 
     except Exception, e:
       self.print_line('error: %s' % (e.message))
 
   def do_exit(self, line):
+    self.con.close()
     return True
 
   def print_result(self, res):
