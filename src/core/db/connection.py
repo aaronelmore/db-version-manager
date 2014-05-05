@@ -44,7 +44,14 @@ class Connection:
         raise ValueError('Source branch %s does not exist' % source_branch)      
 
   def get_current_branch(self):
+    if not self.current_repo:
+      raise Exception("No active repo set")   
     return self.current_branch
+  
+  def get_all_branches(self):
+    if not self.current_repo:
+      raise Exception("No active repo set")
+    return self.g.vs.search(vtype="branch")
 
   def set_current_branch(self, branch):
     if not self.current_repo:
