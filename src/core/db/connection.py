@@ -51,7 +51,9 @@ class Connection:
   def get_all_branches(self):
     if not self.current_repo:
       raise Exception("No active repo set")
-    return self.g.vs.search(vtype="branch")
+    branches = [" * %s" % branches['name'] if branches['name'] == self.current_branch else "   %s" % branches['name'] for branches in self.g.vs.select(vtype="branch")]
+    
+    return "\n".join(branches)
 
   def set_current_branch(self, branch):
     if not self.current_repo:

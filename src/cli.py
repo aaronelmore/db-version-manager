@@ -136,16 +136,13 @@ class DatahubTerminal(cmd2.Cmd):
       self.print_line('error: unable to set branch %s. %s' % (branch, e))
   
   def do_branch(self, line):
-    #TODO FIXME
-    self.print_line("do branch!! %s %s " % ( type(line), line))
     try:
       command = line.strip().split()
-      self.print_line(command)
-      if len(command):
+      if len(command) == 0:
         self.print_line("current branch: %s " % (self.con.get_current_branch()))
       else:
         if "-l" in command:
-          self.print_line("branches: %s " % (self.con.get_all_branches()))
+          self.print_line("branches:\n%s " % (self.con.get_all_branches()))
     except Exception, e:
       self.print_line('error: unable to get current branch %s' % (e))
   
