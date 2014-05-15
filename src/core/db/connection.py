@@ -116,6 +116,37 @@ class Connection:
   def get_in_links(self, node, vtype):
     return [x for x in node.neighbors(mode='IN') if x['vtype'] == vtype]
 
+
+  '''
+  select * from test3
+  union
+  select * from test2 where test2.id not in (select id from test3)
+  union
+  select * from test1 where test1.id not in (select id from test2 union select id from test3)
+  '''
+
+  def get_read_query(self,table_chain):
+    base = 'select * from %s'
+    limiter = 'where %s.id not in (%s)'
+    queries = []
+    if len(table_chain) == 1 :
+      return base % table_chain[0]
+    else:
+      for j,table in enumerate(table_chain):
+        query = base % table
+        if j > 0:
+          query = "%s %s" % (query,limiter)
+          excludes = self.getIds(table_chain[:j])
+          query = query % (table,excludes)
+        queries.append(query)
+    return '\nunion\n'.join(queries)  
+
+  def getIds(self,tables):       
+    if type(tables) == list:
+      return ' union '.join('select id from %s' % t for t in tables)      
+    else: 
+      return 'select id from %s' % tables
+
   def test_read(self):
     if not self.current_repo or not self.current_branch:
       raise ValueError("Repo and branch must be set")    
@@ -131,7 +162,9 @@ class Connection:
       if _n['name'] not in _table_chain:
         _table_chain.append(_n['name'])
         _nodes.extend(self.get_out_links(_n,'table'))
-    print _table_chain  
+    read_query = self.get_read_query(_table_chain)  
+    print read_query
+    return self.backend.execute_sql(read_query)
     
 
   def test_insert(self, tid, name, state, salary):  

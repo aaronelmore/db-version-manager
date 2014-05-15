@@ -161,6 +161,16 @@ class DatahubTerminal(cmd2.Cmd):
     except Exception, e:
       self.print_line('error: %s' % (e.message))
 
+  def do_read(self,line):
+    self.print_result(self.con.test_read())
+
+  def do_insert(self,line):
+    vals = line.strip().split()
+    if len(vals) != 4:
+      self.println("Must be: insert [id], [name], [state], [salary]")
+    else:
+      self.con.test_insert(vals[0],vals[1],vals[2],vals[3])
+
   def do_exit(self, line):
     try:
       self.con.close()
