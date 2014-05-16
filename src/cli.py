@@ -159,16 +159,27 @@ class DatahubTerminal(cmd2.Cmd):
       repos = line.strip().split()
       if len(repos) == 1 and self.con.get_current_branch():
         self.con.create_fork(self.con.get_current_branch(),repos[0])
-        self.print_line("create repo %s forked from %s" % (repos[0], self.con.current_repo))
+        self.print_line("create branch %s forked from %s" % (repos[0], self.con.current_repo))
       elif len(repos) == 2:
         self.con.create_fork(repos[0],repos[1])
-        self.print_line("create repo %s forked from %s" % (repos[1], repos[0]))
+        self.print_line("create branch %s forked from %s" % (repos[1], repos[0]))
       else:
-        self.print_line("invalid repo fork command. should be  fork [sourcefork] [newfork] or  souce [newfork]: '%s'" % (line))
+        self.print_line("invalid fork command. should be  fork [sourcefork] [newfork] or  souce [newfork]: '%s'" % (line))
 
     except Exception, e:
       self.print_line('error: %s' % (e.message))
 
+  def do_merge(self, line):
+    try:
+      branches = line.strip().split()
+      if len(branches) == 2:
+        self.print_line("Merging %s into %s", branches[1], branches[0])
+        self.con.merge(branches[0], branches[1])
+      else:
+        self.print_line("Invalid command. should be merge [branch_merging into] [branch_merging_from]")
+    except Exception, e:
+      self.print_line('error: %s' % (e.message))
+      
   def do_read(self,line):
     self.print_result(self.con.test_read())
 

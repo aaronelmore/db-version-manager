@@ -53,6 +53,38 @@ class Connection:
 ### Versioning  
 #############################################################
 
+  def check_key_conflict(self, t1, t2):
+    query = "select t1.id from %s t1 inner join %s t2 on t1.id = t2.id" % (t1,t2)
+    print query
+    res = self.backend.execute_sql(query)
+    print res
+    if res['row_count'] > 0:
+      print "Cannot automeger"
+    else: 
+      print "No conflicts"
+
+  def merge(self, branch, merging_branch):
+    if not self.current_repo:
+      raise Exception("No active repo set")
+    try:
+      branch = self.g.vs.find(branch)
+      merging_branch = self.g.vs.find(merging_branch)
+      b_out_tables = self.get_out_links_map(branch, 'table','table_name')
+      m_out_tables = self.get_out_links_map(merging_branch, 'table', 'table_name')
+      if b_out_tables.keys() == m_out_tables.keys():
+        print "Merging"
+        print "TODO trace to ancestor and find deltas" #TODO
+        for table in b_out_tables.keys():
+          print "Checking %s" % table
+          self.check_key_conflict(b_out_tables[table]['real_table'], m_out_tables[table]['real_table'])
+          
+      else:
+        raise NotImplementedError("Tables of branches are different.")
+      
+      
+    except ValueError,e:
+      raise ValueError('branch does not exist. %s' % e)      
+
   def create_fork(self, source_branch, new_branch):
     if not self.current_repo:
       raise Exception("No active repo set")
@@ -123,6 +155,9 @@ class Connection:
 
   def test_meta(self):
     return str(self.g)
+
+  def get_out_links_map(self, node, vtype, key):
+    return {x[key]:x for x in node.neighbors(mode='OUT') if x['vtype'] == vtype}
 
 
   def get_out_links(self, node, vtype):
