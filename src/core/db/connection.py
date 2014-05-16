@@ -21,7 +21,7 @@ class Connection:
     self.current_version_file = None
     self.current_branch = None
     self.g = None
-    self.table = 'testtable' # Test version table
+    self.table = 'metatest' # Test version table
     self.create_table = 'CREATE TABLE %s (id int, name varchar(50), state varchar(20), salary int)'       
     self.insert_table = "INSERT INTO %s values (%s, '%s', '%s', %s )"
     
@@ -33,6 +33,21 @@ class Connection:
 
   def delete_repo(self, repo, force=False):
     return self.backend.delete_repo(repo=repo, force=force)
+
+  def reset(self):
+    os.path.dirname(os.path.realpath(__file__))
+    get_tables_query = "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' and table_name like '%s%s';" % (self.table,'%')
+    for table in self.backend.execute_sql(get_tables_query)['tuples']:      
+      print "dropping table : %s" % table
+      self.backend.execute_sql("drop table %s" % table)
+    base = self.GRAPH_PICKLE_BASE.split('%s')[0]
+    for _file in [f for f in os.listdir('.') if os.path.isfile(f) and base in f]:
+      print "removing file %s" % _file
+      os.remove(_file)
+    for s in self.list_repos()['tuples']:
+      print "dropping : %s" % s[0]
+      self.delete_repo(s[0],True)
+    
 
 #############################################################
 ### Versioning  

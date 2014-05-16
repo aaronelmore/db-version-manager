@@ -43,6 +43,7 @@ class DatahubTerminal(cmd2.Cmd):
       print('error: %s' % (e.message))
       sys.exit(1)
       
+      
   @classmethod    
   def from_cli(cls):
     usage = "--user <user-name> [--host <host-name>] [--port <port>]"
@@ -51,6 +52,7 @@ class DatahubTerminal(cmd2.Cmd):
     parser.add_option("-u", "--user", dest="user", help="databse username")
     parser.add_option("-H", "--host", dest="host", help="database hostname", default="localhost")
     parser.add_option("-p", "--port", dest="port", help="database port", type="int", default=5432)
+    parser.add_option("-r","--reset", dest="reset", help="reset database and meta", action="store_true", default=False)
     (options, args) = parser.parse_args()
 
     if not options.user:
@@ -59,8 +61,12 @@ class DatahubTerminal(cmd2.Cmd):
 
     parser.destroy()
     password = getpass.getpass('password: ')
+  
     try:
       con = Connection(user=options.user, password=password)
+      if options.reset:
+        print("Reseting")
+        con.reset()      
       return cls(con)
     except Exception, e:
       print('error: %s' % (e.message))
@@ -109,6 +115,8 @@ class DatahubTerminal(cmd2.Cmd):
     except Exception, e:
       self.print_line('error: %s' % ("can't drop the repo, use -f to force drop."))
 
+  def do_meta(self, line):
+    self.print_line(self.con.test_meta())
 
   def default(self, line):
     try:      
@@ -186,7 +194,7 @@ class DatahubTerminal(cmd2.Cmd):
       self.print_line('%s' % (''.join(
           ['------------' for i in range(0, len(col_names))])))
       for row in res['tuples']:
-        self.print_line('%s' % ('\t'.join([c for c in row])))
+        self.print_line('%s' % ('\t'.join([str(c) for c in row])))
 
       self.print_line('')
       self.print_line('%s rows returned' % (res['row_count']))
