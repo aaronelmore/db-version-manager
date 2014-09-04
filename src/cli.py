@@ -25,13 +25,34 @@ kCmdList = [
 
 
 class DatahubTerminal(cmd2.Cmd):
-  def __init__(self):
+  def __init__(self, con):
+    try:
+      self.con = con
+      self.prompt = "datahub> "
+      cmd2.Cmd.__init__(self, completekey='tab')
+    except Exception, e:
+      self.print_line('error: %s' % (e.message))
+      sys.exit(1)
+  
+  @classmethod
+  def from_args(cls, username, pswd):
+    try:
+      con = Connection(user=username, password=pswd)
+      return cls(con)
+    except Exception, e:
+      print('error: %s' % (e.message))
+      sys.exit(1)
+      
+      
+  @classmethod    
+  def from_cli(cls):
     usage = "--user <user-name> [--host <host-name>] [--port <port>]"
     parser = OptionParser()
     parser.set_usage(usage)
     parser.add_option("-u", "--user", dest="user", help="databse username")
     parser.add_option("-H", "--host", dest="host", help="database hostname", default="localhost")
     parser.add_option("-p", "--port", dest="port", help="database port", type="int", default=5432)
+    parser.add_option("-r","--reset", dest="reset", help="reset database and meta", action="store_true", default=False)
     (options, args) = parser.parse_args()
 
     if not options.user:
@@ -40,14 +61,17 @@ class DatahubTerminal(cmd2.Cmd):
 
     parser.destroy()
     password = getpass.getpass('password: ')
-    cmd2.Cmd.__init__(self, completekey='tab')
-
+  
     try:
-      self.con = Connection(user=options.user, password=password)
-      self.prompt = "datahub> "
+      con = Connection(user=options.user, password=password)
+      if options.reset:
+        print("Reseting")
+        con.reset()      
+      return cls(con)
     except Exception, e:
-      self.print_line('error: %s' % (e.message))
-      sys.exit(1)
+      print('error: %s' % (e.message))
+      sys.exit(1)    
+
 
   def do_ls(self, line):
     try:
@@ -91,6 +115,8 @@ class DatahubTerminal(cmd2.Cmd):
     except Exception, e:
       self.print_line('error: %s' % ("can't drop the repo, use -f to force drop."))
 
+  def do_meta(self, line):
+    self.print_line(self.con.test_meta())
 
   def default(self, line):
     try:      
@@ -101,7 +127,74 @@ class DatahubTerminal(cmd2.Cmd):
     except Exception, e:
       self.print_line('error: %s' % (e.message))
 
+  def do_setrepo(self, line):
+    try:
+      repo = line.strip()
+      self.con.set_current_repo(repo)
+      self.print_line("current repo: %s " % (repo))
+    except Exception, e:
+      self.print_line('error: unable to checkout repo %s. %s' % (repo, e))
+          
+  def do_checkout(self, line):
+    try:
+      branch = line.strip()
+      self.con.set_current_branch(branch)
+      self.print_line("current branch: %s " % (branch))
+    except Exception, e:
+      self.print_line('error: unable to set branch %s. %s' % (branch, e))
+  
+  def do_branch(self, line):
+    try:
+      command = line.strip().split()
+      if len(command) == 0:
+        self.print_line("current branch: %s " % (self.con.get_current_branch()))
+      else:
+        if "-l" in command:
+          self.print_line("branches:\n%s " % (self.con.get_all_branches()))
+    except Exception, e:
+      self.print_line('error: unable to get current branch %s' % (e))
+  
+  def do_fork(self, line):
+    try:
+      repos = line.strip().split()
+      if len(repos) == 1 and self.con.get_current_branch():
+        self.con.create_fork(self.con.get_current_branch(),repos[0])
+        self.print_line("create branch %s forked from %s" % (repos[0], self.con.current_repo))
+      elif len(repos) == 2:
+        self.con.create_fork(repos[0],repos[1])
+        self.print_line("create branch %s forked from %s" % (repos[1], repos[0]))
+      else:
+        self.print_line("invalid fork command. should be  fork [sourcefork] [newfork] or  souce [newfork]: '%s'" % (line))
+
+    except Exception, e:
+      self.print_line('error: %s' % (e.message))
+
+  def do_merge(self, line):
+    try:
+      branches = line.strip().split()
+      if len(branches) == 2:
+        self.print_line("Merging %s into %s", branches[1], branches[0])
+        self.con.merge(branches[0], branches[1])
+      else:
+        self.print_line("Invalid command. should be merge [branch_merging into] [branch_merging_from]")
+    except Exception, e:
+      self.print_line('error: %s' % (e.message))
+      
+  def do_read(self,line):
+    self.print_result(self.con.test_read())
+
+  def do_insert(self,line):
+    vals = line.strip().split()
+    if len(vals) != 4:
+      self.println("Must be: insert [id], [name], [state], [salary]")
+    else:
+      self.con.test_insert(vals[0],vals[1],vals[2],vals[3])
+
   def do_exit(self, line):
+    try:
+      self.con.close()
+    except Exception, e:
+      self.print_line("error : %s" %(e))
     return True
 
   def print_result(self, res):
@@ -112,7 +205,7 @@ class DatahubTerminal(cmd2.Cmd):
       self.print_line('%s' % (''.join(
           ['------------' for i in range(0, len(col_names))])))
       for row in res['tuples']:
-        self.print_line('%s' % ('\t'.join([c for c in row])))
+        self.print_line('%s' % ('\t'.join([str(c) for c in row])))
 
       self.print_line('')
       self.print_line('%s rows returned' % (res['row_count']))
@@ -132,7 +225,7 @@ class DatahubTerminal(cmd2.Cmd):
 
 
 def main():  
-  datahub_terminal = DatahubTerminal()
+  datahub_terminal = DatahubTerminal.from_cli()
   sys.argv = sys.argv[:1]
   datahub_terminal.cmdloop()
 
